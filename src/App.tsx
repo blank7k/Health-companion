@@ -12,6 +12,7 @@ import ChatInterface from "./components/ChatInterface";
 import PatientDashboard from "./components/PatientDashboard";
 import Navigation from "./components/Navigation";
 import AnalysisSection from "./components/AnalysisSection";
+import Analyistics from "./components/Analytics";
 
 function App() {
   const [activeTab, setActiveTab] = useState<"chat" | "patients" | "analytics">(
@@ -89,7 +90,16 @@ function App() {
         />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden">
+        <main
+          className={`flex-1 ${
+            activeTab === "analytics"
+              ? "overflow-y-auto custom-scrollbar"
+              : "overflow-hidden"
+          }`}
+          style={
+            activeTab === "analytics" ? { maxHeight: "calc(100vh - 80px)" } : {}
+          }
+        >
           {activeTab === "chat" && (
             <ChatInterface
               messages={messages}
@@ -101,7 +111,7 @@ function App() {
             />
           )}
           {activeTab === "patients" && <PatientDashboard />}
-          {activeTab === "analytics" && <AnalysisSection />}
+          {activeTab === "analytics" && <Analyistics />}
         </main>
       </div>
     </div>
