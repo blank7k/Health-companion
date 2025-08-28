@@ -19,13 +19,13 @@ export default function TrendChart({ data, loading }) {
 
     return (
         <Card className="shadow-lg border-0 text-white bg-transparent">
-            <CardHeader style={{ background: 'transparent', borderRadius: '0.5rem 0.5rem 0 0' }}>
+            <CardHeader style={{ background: '#111827', borderRadius: '0.5rem 0.5rem 0 0' }}>
                 <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-emerald-400" />
                     <span className="text-white">Discharge Trends (Last 7 Days)</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent style={{ background: 'transparent', borderRadius: '0 0 0.5rem 0.5rem' }}>
+            <CardContent style={{ background: '#111827', borderRadius: '0 0 0.5rem 0.5rem' }}>
                 <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={data} >
                         <CartesianGrid stroke="#334155" strokeDasharray="3 3" />

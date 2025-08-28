@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Clock, CheckCircle } from "lucide-react";
-import { aiService } from "../services/AIService";
 
+// ---- Message interface ----
 interface Message {
   id: string;
   type: "user" | "assistant";
@@ -10,23 +10,45 @@ interface Message {
   status?: "sending" | "sent";
 }
 
-interface ChatInterfaceProps {
-  messages: Message[];
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  inputValue: string;
-  setInputValue: React.Dispatch<React.SetStateAction<string>>;
-  isTyping: boolean;
-  setIsTyping: React.Dispatch<React.SetStateAction<boolean>>;
+// ---- Email sending API ----
+async function sendDischargeEmail(staffName: string): Promise<string> {
+  try {
+    const res = await fetch("http://localhost:5000/send-discharge-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ staffName }),
+    });
+
+    if (res.status === 200) {
+      const data = await res.json();
+      return `✅ Email sent to ${data.message}`;
+    } else if (res.status === 204) {
+      return "⚠️ No discharges today.";
+    } else if (res.status === 404) {
+      return "❌ Staff not found.";
+    } else {
+      return "❌ Something went wrong.";
+    }
+  } catch (error) {
+    console.error(error);
+    return "⚠️ Could not connect to server.";
+  }
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  messages,
-  setMessages,
-  inputValue,
-  setInputValue,
-  isTyping,
-  setIsTyping,
-}) => {
+// ---- Main Component ----
+const ChatInterface: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      type: "assistant",
+      content:
+        "Hello! I'm your hospital discharge assistant. I can help with patient discharge coordination, documentation, and workflow management. What would you like to know?",
+      timestamp: new Date(Date.now() - 5 * 60 * 1000),
+    },
+  ]);
+
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -35,8 +57,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
+  // ---- Handle Send ----
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
@@ -52,58 +75,89 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setInputValue("");
     setIsTyping(true);
 
-    // Update message status to sent
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === userMessage.id ? { ...msg, status: "sent" } : msg
-        )
-      );
-    }, 500);
+    // Mark as sent quickly
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === userMessage.id ? { ...msg, status: "sent" } : msg
+      )
+    );
 
-    // Get intelligent AI response
-    setTimeout(async () => {
-      const response = await getAIResponse(inputValue);
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "assistant",
-        content: response,
-        timestamp: new Date(),
-      };
+    // Simulate thinking delay
+    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsTyping(false);
-    }, 1500);
+    // Get AI Response
+    const response = await getAIResponse(userMessage.content);
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: "assistant",
+      content: response,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, assistantMessage]);
+    setIsTyping(false);
   };
 
+  // ---- AI Response Logic (merged from first code) ----
   const getAIResponse = async (input: string): Promise<string> => {
-    try {
-      // Use the intelligent AI service instead of basic keyword matching
-      const response = await aiService.processQuery(input);
-      return response;
-    } catch (error) {
-      console.error("AI Service Error:", error);
-      return `I apologize, but I encountered an error processing your request. Please try rephrasing your question or ask for help to see what I can assist you with.`;
+    const lowerInput = input.toLowerCase();
+
+    // Email feature
+    if (lowerInput.includes("send email") || lowerInput.includes("email")) {
+      const match = input.match(/to ([\w\s]+)/i);
+      const staffName = match ? match[1].trim() : null;
+
+      if (!staffName) {
+        return "❌ Please specify the staff name to send the email.";
+      }
+
+      // Optimistic message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 2).toString(),
+          type: "assistant",
+          content: `📤 Sending discharge email to ${staffName}...`,
+          timestamp: new Date(),
+        },
+      ]);
+
+      const emailResult = await sendDischargeEmail(staffName);
+      return emailResult;
     }
+
+    // Example keyword logic (you can expand with mockData)
+    if (lowerInput.includes("ready patients")) {
+      return "🟢 Ready Patients: Margaret Johnson (A-204), William Thompson (C-205)";
+    }
+    if (lowerInput.includes("pending")) {
+      return "🟡 Pending Discharges: Robert Martinez (B-112), Dorothy Wilson (B-208)";
+    }
+    if (lowerInput.includes("delay")) {
+      return "⏳ Delays: Linda Davis (A-301), Charles Brown (A-105)";
+    }
+
+    // Fallback
+    return `I understand you're asking about "${input}". Try asking: "Show ready patients", "What delays exist?", or "Send email to [staff]".`;
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
+  // ---- Helpers ----
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   const quickActions = [
     "Show me ready patients",
     "What delays do we have today?",
-    "Margaret Johnson status",
+    "Send email to Rohit",
     "Patient census overview",
     "Discharge metrics today",
     "Transportation coordination status",
   ];
 
-  // ✅ The return is correctly inside ChatInterface
+  // ---- UI (from your 2nd code) ----
   return (
     <div className="flex flex-col h-full">
-      {/* Chat Header */}
+      {/* Header */}
       <div className="p-4 border-b border-gray-800 bg-gray-900 relative">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-blue-600/5"></div>
         <div className="flex items-center justify-between relative z-10">

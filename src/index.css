@@ -1,3 +1,24 @@
+/* Custom scrollbar for patient detail */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #3b82f6 40%, #1e293b 100%);
+    border-radius: 8px;
+    border: 2px solid #1e293b;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #60a5fa 40%, #334155 100%);
+}
+
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #3b82f6 #1e293b;
+}
+
 /* Custom scrollbar for analytics/main content */
 .custom-scrollbar::-webkit-scrollbar {
     width: 10px;

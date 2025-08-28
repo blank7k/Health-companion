@@ -39,7 +39,7 @@ export default function MetricCard({ metric, loading }) {
                         <p className="text-3xl font-bold text-white">{metric.value}</p>
                     </div>
                     <div className={`p-3 rounded-xl bg-gradient-to-r ${colorClasses.split(' ')[0]} ${colorClasses.split(' ')[1]} bg-opacity-20`}>
-                        <IconComponent className={`text-gray-900 w-6 h-6 ${colorClasses.split(' ')[2]}`} />
+                        <IconComponent className={`text-stone-900 w-6 h-6 ${colorClasses.split(' ')[2]}`} />
                     </div>
                 </div>
                 {metric.change && (

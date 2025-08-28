@@ -20,13 +20,13 @@ export default function DischargeChart({ data, loading }) {
 
     return (
         <Card className=" shadow-lg border-0 text-white bg-transparent">
-            <CardHeader style={{ borderRadius: '0.5rem 0.5rem 0 0' }}>
+            <CardHeader style={{ background: '#111827', borderRadius: '0.5rem 0.5rem 0 0' }}>
                 <CardTitle className="flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-blue-400" />
                     <span className="text-white">Discharge Status Overview</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent style={{ borderRadius: '0 0 0.5rem 0.5rem' }}>
+            <CardContent style={{ background: '#111827', borderRadius: '0 0 0.5rem 0.5rem' }}>
                 <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={data} style={{ background: 'transparent' }}>
                         <CartesianGrid stroke="#334155" strokeDasharray="3 3" />

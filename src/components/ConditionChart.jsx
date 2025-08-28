@@ -19,15 +19,15 @@ export default function ConditionChart({ data, loading }) {
 
     return (
         <Card className="shadow-lg border-0 bg-gray-900 text-white bg-transparent">
-            <CardHeader>
+            <CardHeader style={{ background: '#111827', borderRadius: '0.5rem 0.5rem 0 0' }}>
                 <CardTitle className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-purple-400" />
                     <span className="text-white">Patient Condition Distribution</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent >
+            <CardContent style={{ background: '#111827', borderRadius: '0 0 0.5rem 0.5rem' }}>
                 <ResponsiveContainer width="100%" height={300}>
-                    <PieChart style={{ background: 'transparent' }}>
+                    <PieChart>
                         <Pie
                             data={data}
                             cx="50%"
