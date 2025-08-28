@@ -10,6 +10,15 @@ interface Message {
   status?: "sending" | "sent";
 }
 
+interface ChatInterfaceProps {
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  inputValue: string;
+  setInputValue: React.Dispatch<React.SetStateAction<string>>;
+  isTyping: boolean;
+  setIsTyping: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
 // ---- Email sending API ----
 async function sendDischargeEmail(staffName: string): Promise<string> {
   try {
@@ -36,19 +45,14 @@ async function sendDischargeEmail(staffName: string): Promise<string> {
 }
 
 // ---- Main Component ----
-const ChatInterface: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      type: "assistant",
-      content:
-        "Hello! I'm your hospital discharge assistant. I can help with patient discharge coordination, documentation, and workflow management. What would you like to know?",
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-    },
-  ]);
-
-  const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+const ChatInterface: React.FC<ChatInterfaceProps> = ({
+  messages,
+  setMessages,
+  inputValue,
+  setInputValue,
+  isTyping,
+  setIsTyping,
+}) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
