@@ -41,81 +41,96 @@ const LoginScreen: React.FC = () => {
   const { login, state } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<
-    "Doctor" | "Nurse" | "Billing Staff" | "Admin"
+    "Doctor" | "Nurse" | "Billing Staff" | "Admin" | "Patient"
   >("Doctor");
 
   const rolePermissions = {
-    Doctor: [
-      "approve:discharge",
-      "reject:discharge",
-      "view:patient_records",
-      "update:diagnosis",
-      "update:treatment_notes",
-    ],
-    Nurse: [
-      "view:patient_records",
-      "mark:nursing_task_complete",
-      "verify:meds_before_discharge",
-    ],
-    "Billing Staff": [
-      "view:patient_records",
-      "edit:billing",
-      "generate:bill",
-      "mark:bill_paid",
-    ],
-    Admin: [
-      "approve:discharge",
-      "reject:discharge",
-      "view:patient_records",
-      "update:diagnosis",
-      "update:treatment_notes",
-      "mark:nursing_task_complete",
-      "verify:meds_before_discharge",
-      "edit:billing",
-      "generate:bill",
-      "mark:bill_paid",
-      "manage:roles",
-      "view:audit_logs",
-      "configure:integrations",
-    ],
-  };
+  Doctor: [
+    "approve:discharge",
+    "reject:discharge",
+    "view:patient_records",
+    "update:diagnosis",
+    "update:treatment_notes",
+  ],
+  Nurse: [
+    "view:patient_records",
+    "mark:nursing_task_complete",
+    "verify:meds_before_discharge",
+  ],
+  "Billing Staff": [
+    "view:patient_records",
+    "edit:billing",
+    "generate:bill",
+    "mark:bill_paid",
+  ],
+  Admin: [
+    "approve:discharge",
+    "reject:discharge",
+    "view:patient_records",
+    "update:diagnosis",
+    "update:treatment_notes",
+    "mark:nursing_task_complete",
+    "verify:meds_before_discharge",
+    "edit:billing",
+    "generate:bill",
+    "mark:bill_paid",
+    "manage:roles",
+    "view:audit_logs",
+    "configure:integrations",
+  ],
+  Patient: [
+    "view:self_records",
+    "view:discharge_status",
+    "download:documents",
+    "message:care_team",
+  ],
+} as const;
 
-  const handleLogin = async () => {
-    setIsLoading(true);
-    try {
-      const mockUser = {
-        sub: `${selectedRole.toLowerCase().replace(" ", "")}@hospital.com`,
-        email: `${selectedRole.toLowerCase().replace(" ", "")}@hospital.com`,
-        name:
-          selectedRole === "Doctor"
-            ? "Dr. Sarah Wilson"
-            : selectedRole === "Nurse"
-            ? "Jennifer Martinez, RN"
-            : selectedRole === "Billing Staff"
-            ? "Michael Chen"
-            : "Administrator",
-        roles: [selectedRole],
-        permissions: rolePermissions[selectedRole] || [],
-        loginTime: new Date().toISOString(),
-      };
-      const mockToken = btoa(JSON.stringify(mockUser));
-      await login(mockToken);
-    } catch (error) {
-      // error handled by AuthContext
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getRoleDescription = (role: string) => {
-    const descriptions = {
-      Doctor: "Full discharge approval permissions",
-      Nurse: "Task management and patient care",
-      "Billing Staff": "Financial records access",
-      Admin: "System administration",
+const handleLogin = async () => {
+  setIsLoading(true);
+  try {
+    const roleDisplayName: Record<
+      "Doctor" | "Nurse" | "Billing Staff" | "Admin" | "Patient",
+      string
+    > = {
+      Doctor: "Dr. Sarah Wilson",
+      Nurse: "Jennifer Martinez, RN",
+      "Billing Staff": "Michael Chen",
+      Admin: "Administrator",
+      Patient: "Linda Davis",
     };
-    return descriptions[role as keyof typeof descriptions] || "";
-  };
+
+    const roleId = selectedRole.toLowerCase().replace(/\s+/g, ""); 
+    const mockUser = {
+      sub: `${roleId}@hospital.com`,
+      email: `${roleId}@hospital.com`,
+      name: roleDisplayName[selectedRole],
+      roles: [selectedRole],
+      permissions: rolePermissions[selectedRole],
+      loginTime: new Date().toISOString(),
+    };
+
+    const mockToken = btoa(JSON.stringify(mockUser)); 
+    await login(mockToken);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+const roleDescription: Record<keyof typeof rolePermissions, string> = {
+  Doctor: "Full discharge approval permissions",
+  Nurse: "Task management and patient care",
+  "Billing Staff": "Financial records access",
+  Admin: "System administration",
+  Patient: "View your records, discharge status, and messages",
+};
+
+const getRoleDescription = (role: string) =>
+  roleDescription[role as keyof typeof rolePermissions] ?? "";
+
 
   return (
     <div
@@ -153,30 +168,24 @@ const LoginScreen: React.FC = () => {
                 Choose Demo Role:
               </h3>
               <div className="space-y-2">
-                {Object.keys(rolePermissions).map((role) => (
-                  <label
-                    key={role}
-                    className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-blue-800/30 transition-colors"
-                  >
-                    <input
-                      type="radio"
-                      name="role"
-                      value={role}
-                      checked={selectedRole === role}
-                      onChange={(e) => setSelectedRole(e.target.value as any)}
-                      className="text-blue-600 focus:ring-blue-600 focus:ring-2"
-                      data-testid={`role-option-${role
-                        .toLowerCase()
-                        .replace(" ", "-")}`}
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium text-white">{role}</p>
-                      <p className="text-xs text-gray-400">
-                        {getRoleDescription(role)}
-                      </p>
-                    </div>
-                  </label>
-                ))}
+               {(Object.keys(rolePermissions) as Array<keyof typeof rolePermissions>).map((role) => (
+  <label key={role} className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-blue-800/30 transition-colors">
+    <input
+      type="radio"
+      name="role"
+      value={role}
+      checked={selectedRole === role}
+      onChange={(e) => setSelectedRole(e.target.value as typeof selectedRole)}
+      className="text-blue-600 focus:ring-blue-600 focus:ring-2"
+      data-testid={`role-option-${String(role).toLowerCase().replace(" ", "-")}`}
+    />
+    <div className="flex-1">
+      <p className="font-medium text-white">{role}</p>
+      <p className="text-xs text-gray-400">{getRoleDescription(role)}</p>
+    </div>
+  </label>
+))}
+
               </div>
             </div>
             <button
@@ -218,31 +227,43 @@ const LoginScreen: React.FC = () => {
 // --- Main App ---
 function MainApp() {
   const { state, logout } = useAuth();
+
+  const isPatient = state.user?.roles?.[0] === "Patient"; // ✅
+
   const [activeTab, setActiveTab] = useState<
     "chat" | "patients" | "analytics" | "discharge"
   >("chat");
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       type: "assistant",
-      content:
-        "Hello! I'm your hospital discharge assistant. I can help you with patient discharge coordination, documentation, and workflow management. What would you like to know?",
+      content: isPatient
+        ? "Hi! I’m your care companion. You can ask about your discharge status, medications, and next steps. How can I help today?"
+        : "Hello! I'm your hospital discharge assistant. I can help you with patient discharge coordination, documentation, and workflow management. What would you like to know?",
       timestamp: new Date(Date.now() - 5 * 60 * 1000),
     },
   ]);
+
   const [inputValue, setInputValue] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
-  const navItems: NavItem[] = [
-    { id: "chat", label: "AI Assistant", icon: MessageSquare },
-    { id: "patients", label: "Patient Data", icon: Users },
-    { id: "discharge", label: "Discharge Management", icon: Shield },
-    { id: "analytics", label: "Analytics", icon: Activity },
-  ];
+
+  // ✅ Restrict nav for patient users
+  const navItems: NavItem[] = isPatient
+    ? [{ id: "chat", label: "AI Assistant", icon: MessageSquare }]
+    : [
+        { id: "chat", label: "AI Assistant", icon: MessageSquare },
+        { id: "patients", label: "Patient Data", icon: Users },
+        { id: "discharge", label: "Discharge Management", icon: Shield },
+        { id: "analytics", label: "Analytics", icon: Activity },
+      ];
+
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
       logout();
     }
   };
+
   return (
     <div className="min-h-screen bg-black">
       {/* Header */}
@@ -260,31 +281,32 @@ function MainApp() {
                   Health Companion
                 </h1>
               </div>
-              <span className="text-sm text-blue-300 bg-gradient-to-r from-blue-500/10 to-blue-600/10 px-3 py-1 rounded-full border border-blue-500/30 backdrop-blur-sm">
-                RBAC-Enabled Hospital System
+
+              {/* ✅ Role badge changes for Patient */}
+              <span className={`text-sm ${isPatient ? "text-green-300 border-green-500/30 from-green-500/10 to-green-600/10" : "text-blue-300 border-blue-500/30 from-blue-500/10 to-blue-600/10"} bg-gradient-to-r px-3 py-1 rounded-full border backdrop-blur-sm`}>
+                {isPatient ? "Patient Portal" : "RBAC-Enabled Hospital System"}
               </span>
             </div>
+
             <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-1 text-blue-400">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span>6 Active Patients</span>
+              {/* Hide live ops counts for patients */}
+              {!isPatient && (
+                <div className="hidden md:flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-1 text-blue-400">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span>6 Active Patients</span>
+                  </div>
+                  <div className="flex items-center space-x-1 text-white">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    <span>2 Ready for Discharge</span>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-1 text-white">
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                  <span>2 Ready for Discharge</span>
-                </div>
-              </div>
+              )}
+
               {/* User Info */}
-              <div
-                className="flex items-center space-x-3 text-right"
-                data-testid="user-info"
-              >
+              <div className="flex items-center space-x-3 text-right" data-testid="user-info">
                 <div>
-                  <p
-                    className="text-sm font-medium text-white"
-                    data-testid="user-name"
-                  >
+                  <p className="text-sm font-medium text-white" data-testid="user-name">
                     {state.user?.name}
                   </p>
                   <p className="text-xs text-gray-400" data-testid="user-role">
@@ -296,13 +318,17 @@ function MainApp() {
                 </div>
               </div>
 
-              <button
-                className="relative p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
-                data-testid="notifications-button"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg"></span>
-              </button>
+              {/* Hide notifications for patients */}
+              {!isPatient && (
+                <button
+                  className="relative p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
+                  data-testid="notifications-button"
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg"></span>
+                </button>
+              )}
+
               <button
                 onClick={handleLogout}
                 className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200"
@@ -315,6 +341,7 @@ function MainApp() {
           </div>
         </div>
       </header>
+
       <div className="flex h-[calc(100vh-80px)]">
         {/* Navigation Sidebar */}
         <Navigation
@@ -322,17 +349,15 @@ function MainApp() {
           activeTab={activeTab}
           onTabChange={(tabId: any) => setActiveTab(tabId)}
         />
+
         {/* Main Content */}
         <main
           className={`flex-1 ${
-            activeTab === "analytics"
-              ? "overflow-y-auto custom-scrollbar"
-              : "overflow-hidden"
+            activeTab === "analytics" ? "overflow-y-auto custom-scrollbar" : "overflow-hidden"
           }`}
-          style={
-            activeTab === "analytics" ? { maxHeight: "calc(100vh - 80px)" } : {}
-          }
+          style={activeTab === "analytics" ? { maxHeight: "calc(100vh - 80px)" } : {}}
         >
+          {/* Chat always available */}
           {activeTab === "chat" && (
             <ChatInterface
               messages={messages}
@@ -343,9 +368,11 @@ function MainApp() {
               setIsTyping={setIsTyping}
             />
           )}
-          {activeTab === "patients" && <PatientDashboard />}
-          {activeTab === "discharge" && <DischargeManagement />}
-          {activeTab === "analytics" && <Analytics />}
+
+          {/* Hide staff-only views when Patient */}
+          {!isPatient && activeTab === "patients" && <PatientDashboard />}
+          {!isPatient && activeTab === "discharge" && <DischargeManagement />}
+          {!isPatient && activeTab === "analytics" && <Analytics />}
         </main>
       </div>
     </div>
