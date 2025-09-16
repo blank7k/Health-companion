@@ -228,7 +228,7 @@ const getRoleDescription = (role: string) =>
 function MainApp() {
   const { state, logout } = useAuth();
 
-  const isPatient = state.user?.roles?.[0] === "Patient"; // ✅
+  const isPatient = state.user?.roles?.[0] === "Patient"; 
 
   const [activeTab, setActiveTab] = useState<
     "chat" | "patients" | "analytics" | "discharge"
@@ -248,9 +248,10 @@ function MainApp() {
   const [inputValue, setInputValue] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
 
-  // ✅ Restrict nav for patient users
   const navItems: NavItem[] = isPatient
-    ? [{ id: "chat", label: "AI Assistant", icon: MessageSquare }]
+    ? [{ id: "chat", label: "AI Assistant", icon: MessageSquare },
+       { id: "patients", label: "Patient Data", icon: Users }
+    ]
     : [
         { id: "chat", label: "AI Assistant", icon: MessageSquare },
         { id: "patients", label: "Patient Data", icon: Users },
@@ -318,7 +319,6 @@ function MainApp() {
                 </div>
               </div>
 
-              {/* Hide notifications for patients */}
               {!isPatient && (
                 <button
                   className="relative p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
@@ -373,6 +373,10 @@ function MainApp() {
           {!isPatient && activeTab === "patients" && <PatientDashboard />}
           {!isPatient && activeTab === "discharge" && <DischargeManagement />}
           {!isPatient && activeTab === "analytics" && <Analytics />}
+{isPatient && activeTab === "patients" && (
+  <PatientDashboard mode="self" />
+  //<PatientDashboard mode="self" selfPatientId="P1001" />
+)}
         </main>
       </div>
     </div>

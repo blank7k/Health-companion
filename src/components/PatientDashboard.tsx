@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   User,
   Clock,
   AlertTriangle,
   CheckCircle,
-  FileText,
   Calendar,
   Phone,
   MapPin,
@@ -12,25 +11,30 @@ import {
   Trash2,
 } from "lucide-react";
 import { mockPatients, mockDischargeData } from "../data/mockData";
+import "../index.css";
 
-const PatientDashboard: React.FC = () => {
-  const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "pending" | "ready" | "delayed">(
-    "all"
-  );
-  const [patients, setPatients] = useState([...mockPatients]);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newPatient, setNewPatient] = useState({
-    id: "",
-    name: "",
-    age: "",
-    room: "",
-    diagnosis: "",
-    admissionDate: "",
-    dischargeStatus: "pending",
-    physician: "",
-  });
+type PatientLite = {
+  id: string;
+  name: string;
+  age: number | string;
+  room: string;
+  diagnosis: string;
+  admissionDate: string;
+  dischargeStatus: "pending" | "ready" | "delayed";
+  physician: string;
+};
 
+type PatientDashboardProps = {
+  /** staff = full list and controls; self = single-patient view sourced from mockPatients */
+  mode?: "staff" | "self";
+  selfPatientId?: string;
+};
+
+const PatientDashboard: React.FC<PatientDashboardProps> = ({
+  mode = "staff",
+  selfPatientId,
+}) => {
+  // ---- helpers ----
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ready":
@@ -57,29 +61,71 @@ const PatientDashboard: React.FC = () => {
     }
   };
 
+  // ---- source patients from mocks; in self mode, reduce to Linda (or provided id) ----
+  const selfPatientFromMocks: PatientLite | undefined = useMemo(() => {
+    if (mode !== "self") return undefined;
+    if (selfPatientId) return mockPatients.find((p) => p.id === selfPatientId);
+    // default to Linda Davis by name
+    return mockPatients.find(
+      (p) => p.name.trim().toLowerCase() === "linda davis"
+    );
+  }, [mode, selfPatientId]);
+
+  const initialPatients: PatientLite[] =
+    mode === "self"
+      ? (selfPatientFromMocks ? [selfPatientFromMocks] : [])
+      : [...mockPatients];
+
+  // ---- state ----
+  const [patients, setPatients] = useState<PatientLite[]>(initialPatients);
+  const [selectedPatient, setSelectedPatient] = useState<string | null>(
+    mode === "self" && selfPatientFromMocks ? selfPatientFromMocks.id : null
+  );
+  const [filter, setFilter] = useState<"all" | "pending" | "ready" | "delayed">(
+    "all"
+  );
   const [search, setSearch] = useState("");
 
-  const filteredPatients = patients.filter((patient) => {
-    const matchesFilter =
-      filter === "all" || patient.dischargeStatus === filter;
-    const matchesSearch =
-      patient.name.toLowerCase().includes(search.toLowerCase()) ||
-      patient.id.toLowerCase().includes(search.toLowerCase()) ||
-      (patient.diagnosis &&
-        patient.diagnosis.toLowerCase().includes(search.toLowerCase()));
-    return matchesFilter && (search.trim() === "" || matchesSearch);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newPatient, setNewPatient] = useState({
+    id: "",
+    name: "",
+    age: "",
+    room: "",
+    diagnosis: "",
+    admissionDate: "",
+    dischargeStatus: "pending",
+    physician: "",
   });
+
+  // ---- filtering/search (disabled in self mode) ----
+  const filteredPatients =
+    mode === "self"
+      ? patients
+      : patients.filter((patient) => {
+          const matchesFilter =
+            filter === "all" || patient.dischargeStatus === filter;
+          const matchesSearch =
+            patient.name.toLowerCase().includes(search.toLowerCase()) ||
+            patient.id.toLowerCase().includes(search.toLowerCase()) ||
+            (patient.diagnosis &&
+              patient.diagnosis.toLowerCase().includes(search.toLowerCase()));
+          return matchesFilter && (search.trim() === "" || matchesSearch);
+        });
 
   const selectedPatientData = selectedPatient
     ? patients.find((p) => p.id === selectedPatient)
     : null;
 
+  // ---- handlers (no-ops in self mode) ----
   const handleDeletePatient = (id: string) => {
+    if (mode === "self") return;
     setPatients((prev) => prev.filter((p) => p.id !== id));
     setSelectedPatient(null);
   };
 
   const handleCreatePatient = (e: React.FormEvent) => {
+    if (mode === "self") return;
     e.preventDefault();
     if (
       !newPatient.id ||
@@ -115,6 +161,8 @@ const PatientDashboard: React.FC = () => {
     });
   };
 
+  const discharge = mockDischargeData;
+
   return (
     <div className="flex h-full">
       {/* Patient List */}
@@ -126,63 +174,71 @@ const PatientDashboard: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
         <div className="p-4 border-b border-gray-800 relative z-10">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Patients</h2>
-            <button
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow transition-all duration-200"
-              onClick={() => setShowCreate(true)}
-            >
-              Create Patient
-            </button>
+            <h2 className="text-xl font-semibold text-white">
+              {mode === "self" ? "My Record" : "Patients"}
+            </h2>
+
+            {mode !== "self" && (
+              <button
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow transition-all duration-200"
+                onClick={() => setShowCreate(true)}
+              >
+                Create Patient
+              </button>
+            )}
           </div>
 
-          {/* Filter Buttons */}
-          <div className="flex space-x-2 mb-4">
-            {[
-              { key: "all", label: "All", count: mockPatients.length },
-              {
-                key: "ready",
-                label: "Ready",
-                count: mockPatients.filter((p) => p.dischargeStatus === "ready")
-                  .length,
-              },
-              {
-                key: "pending",
-                label: "Pending",
-                count: mockPatients.filter(
-                  (p) => p.dischargeStatus === "pending"
-                ).length,
-              },
-              {
-                key: "delayed",
-                label: "Delayed",
-                count: mockPatients.filter(
-                  (p) => p.dischargeStatus === "delayed"
-                ).length,
-              },
-            ].map(({ key, label, count }) => (
-              <button
-                key={key}
-                onClick={() => setFilter(key as any)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  filter === key
-                    ? "bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-300 border border-blue-500/30 shadow-lg shadow-blue-500/20"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }`}
-              >
-                {label} ({count})
-              </button>
-            ))}
-          </div>
-          <div className="relative w-full">
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search patients..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 focus:shadow-lg focus:shadow-blue-500/20"
-            />
-          </div>
+          {/* Filter/Search only for staff */}
+          {mode !== "self" && (
+            <>
+              <div className="flex space-x-2 mb-4">
+                {[
+                  { key: "all", label: "All", count: mockPatients.length },
+                  {
+                    key: "ready",
+                    label: "Ready",
+                    count: mockPatients.filter((p) => p.dischargeStatus === "ready")
+                      .length,
+                  },
+                  {
+                    key: "pending",
+                    label: "Pending",
+                    count: mockPatients.filter((p) => p.dischargeStatus === "pending")
+                      .length,
+                  },
+                  {
+                    key: "delayed",
+                    label: "Delayed",
+                    count: mockPatients.filter((p) => p.dischargeStatus === "delayed")
+                      .length,
+                  },
+                ].map(({ key, label, count }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilter(key as any)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      filter === key
+                        ? "bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-300 border border-blue-500/30 shadow-lg shadow-blue-500/20"
+                        : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                    }`}
+                  >
+                    {label} ({count})
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full">
+                <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search patients..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 focus:shadow-lg focus:shadow-blue-500/20"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="overflow-y-auto relative z-10 flex-1 custom-scrollbar">
@@ -225,13 +281,16 @@ const PatientDashboard: React.FC = () => {
                 <Calendar className="w-3 h-3 mr-1" />
                 Admitted: {new Date(patient.admissionDate).toLocaleDateString()}
               </div>
-              <button
-                onClick={() => handleDeletePatient(patient.id)}
-                className="absolute bottom-4 right-4 p-2 hover:bg-red-600 opacity-50 hover:opacity-100 text-white rounded-full shadow transition-all duration-200"
-                title="Delete Patient"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+
+              {mode !== "self" && (
+                <button
+                  onClick={() => handleDeletePatient(patient.id)}
+                  className="absolute bottom-4 right-4 p-2 hover:bg-red-600 opacity-50 hover:opacity-100 text-white rounded-full shadow transition-all duration-200"
+                  title="Delete Patient"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -241,7 +300,7 @@ const PatientDashboard: React.FC = () => {
       <div className="flex-1 bg-black">
         {selectedPatientData ? (
           <div className="p-6 h-full overflow-y-auto custom-scrollbar">
-            {/* Patient Header */}
+            {/* Header */}
             <div className="bg-gray-900 rounded-lg p-6 mb-6 shadow-2xl border border-gray-800 relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-blue-600/5 rounded-lg"></div>
               <div className="flex items-start justify-between mb-4 relative z-10">
@@ -250,14 +309,10 @@ const PatientDashboard: React.FC = () => {
                     {selectedPatientData.name}
                   </h1>
                   <div className="flex items-center space-x-4 mt-1">
-                    <p className="text-gray-400">
-                      ID: {selectedPatientData.id}
-                    </p>
+                    <p className="text-gray-400">ID: {selectedPatientData.id}</p>
                     <p className="text-gray-400">•</p>
                     <p className="text-gray-400">
-                      Dr.{" "}
-                      {selectedPatientData.physician?.split(" ")[1] ||
-                        "Johnson"}
+                      Dr. {selectedPatientData.physician?.split(" ")[1] || "Johnson"}
                     </p>
                   </div>
                 </div>
@@ -276,9 +331,7 @@ const PatientDashboard: React.FC = () => {
               <div className="grid grid-cols-4 gap-4 text-sm relative z-10">
                 <div>
                   <span className="font-medium text-blue-300">Room:</span>
-                  <p className="text-white font-mono">
-                    {selectedPatientData.room}
-                  </p>
+                  <p className="text-white font-mono">{selectedPatientData.room}</p>
                 </div>
                 <div>
                   <span className="font-medium text-blue-300">Age:</span>
@@ -287,9 +340,7 @@ const PatientDashboard: React.FC = () => {
                 <div>
                   <span className="font-medium text-blue-300">Admitted:</span>
                   <p className="text-white">
-                    {new Date(
-                      selectedPatientData.admissionDate
-                    ).toLocaleDateString()}
+                    {new Date(selectedPatientData.admissionDate).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
@@ -313,7 +364,7 @@ const PatientDashboard: React.FC = () => {
                 Discharge Progress
               </h2>
               <div className="space-y-3 relative z-10">
-                {mockDischargeData.tasks.map((task, index) => (
+                {(discharge.tasks ?? mockDischargeData.tasks).map((task, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700"
@@ -326,17 +377,11 @@ const PatientDashboard: React.FC = () => {
                             : "bg-gray-600"
                         }`}
                       ></div>
-                      <span
-                        className={`${
-                          task.completed ? "text-white" : "text-gray-400"
-                        }`}
-                      >
+                      <span className={`${task.completed ? "text-white" : "text-gray-400"}`}>
                         {task.name}
                       </span>
                     </div>
-                    <span className="text-sm text-gray-400">
-                      {task.assignedTo}
-                    </span>
+                    <span className="text-sm text-gray-400">{task.assignedTo}</span>
                   </div>
                 ))}
               </div>
@@ -351,27 +396,21 @@ const PatientDashboard: React.FC = () => {
                 </h3>
                 <div className="space-y-3 relative z-10">
                   <div>
-                    <span className="font-medium text-blue-300">
-                      Diagnosis:
-                    </span>
-                    <p className="text-white mt-1">
-                      {selectedPatientData.diagnosis}
-                    </p>
+                    <span className="font-medium text-blue-300">Diagnosis:</span>
+                    <p className="text-white mt-1">{selectedPatientData.diagnosis}</p>
                   </div>
                   <div>
-                    <span className="font-medium text-blue-300">
-                      Attending Physician:
-                    </span>
+                    <span className="font-medium text-blue-300">Attending Physician:</span>
                     <p className="text-white mt-1">Dr. Sarah Johnson</p>
                   </div>
                   <div>
-                    <span className="font-medium text-blue-300">
-                      Discharge Medications:
-                    </span>
+                    <span className="font-medium text-blue-300">Discharge Medications:</span>
                     <ul className="text-white mt-1 space-y-1">
-                      {mockDischargeData.medications.map((med, index) => (
-                        <li key={index}>• {med}</li>
-                      ))}
+                      {(discharge.medications ?? mockDischargeData.medications).map(
+                        (med, index) => (
+                          <li key={index}>• {med}</li>
+                        )
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -384,36 +423,28 @@ const PatientDashboard: React.FC = () => {
                 </h3>
                 <div className="space-y-3 relative z-10">
                   <div>
-                    <span className="font-medium text-blue-300">
-                      Expected Discharge:
-                    </span>
+                    <span className="font-medium text-blue-300">Expected Discharge:</span>
                     <p className="text-white mt-1">
-                      {mockDischargeData.expectedDischarge}
+                      {discharge.expectedDischarge ?? mockDischargeData.expectedDischarge}
                     </p>
                   </div>
                   <div>
-                    <span className="font-medium text-blue-300">
-                      Transportation:
-                    </span>
+                    <span className="font-medium text-blue-300">Transportation:</span>
                     <p className="text-white mt-1">
-                      {mockDischargeData.transportation}
+                      {discharge.transportation ?? mockDischargeData.transportation}
                     </p>
                   </div>
                   <div>
-                    <span className="font-medium text-blue-300">
-                      Follow-up Care:
-                    </span>
+                    <span className="font-medium text-blue-300">Follow-up Care:</span>
                     <p className="text-white mt-1">
-                      {mockDischargeData.followUp}
+                      {discharge.followUp ?? mockDischargeData.followUp}
                     </p>
                   </div>
                   <div>
-                    <span className="font-medium text-blue-300">
-                      Discharge Destination:
-                    </span>
+                    <span className="font-medium text-blue-300">Discharge Destination:</span>
                     <p className="text-white mt-1 flex items-center">
                       <MapPin className="w-4 h-4 mr-1" />
-                      {mockDischargeData.destination}
+                      {discharge.destination ?? mockDischargeData.destination}
                     </p>
                   </div>
                 </div>
@@ -429,9 +460,7 @@ const PatientDashboard: React.FC = () => {
               <div className="flex items-center space-x-4 relative z-10">
                 <Phone className="w-5 h-5 text-blue-400" />
                 <div>
-                  <p className="font-medium text-white">
-                    Jane Smith (Daughter)
-                  </p>
+                  <p className="font-medium text-white">Jane Smith (Daughter)</p>
                   <p className="text-gray-400">(555) 123-4567</p>
                 </div>
               </div>
@@ -442,17 +471,19 @@ const PatientDashboard: React.FC = () => {
             <div className="text-center">
               <User className="w-16 h-16 text-blue-400 mx-auto mb-4 drop-shadow-lg" />
               <h3 className="text-xl font-semibold text-white mb-2">
-                Select a Patient
+                {mode === "self" ? "No record found" : "Select a Patient"}
               </h3>
               <p className="text-gray-400">
-                Choose a patient from the list to view their discharge details
+                {mode === "self"
+                  ? "The requested patient was not found in the list."
+                  : "Choose a patient from the list to view their discharge details"}
               </p>
             </div>
           </div>
         )}
 
-        {/* Modal for creating a new patient */}
-        {showCreate && (
+        {/* Modal for creating a new patient (hidden in self mode) */}
+        {mode !== "self" && showCreate && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60">
             <div className="bg-gray-900 rounded-lg shadow-2xl border border-gray-700 w-full max-w-lg p-8 relative">
               <button
@@ -462,9 +493,7 @@ const PatientDashboard: React.FC = () => {
               >
                 ×
               </button>
-              <h3 className="text-xl font-semibold text-white mb-4">
-                Add New Patient
-              </h3>
+              <h3 className="text-xl font-semibold text-white mb-4">Add New Patient</h3>
               <form onSubmit={handleCreatePatient} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 ">
                   <input
@@ -565,7 +594,3 @@ const PatientDashboard: React.FC = () => {
 };
 
 export default PatientDashboard;
-
-// Custom scrollbar styles for the patient list
-// You can move this to index.css or a dedicated CSS file if preferred
-import "../index.css";
